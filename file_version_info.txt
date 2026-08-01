@@ -3,8 +3,8 @@
 # Version info for TwitchRecorder.exe (helps AV / SmartScreen trust signals a bit)
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 2, 5, 0),
-    prodvers=(1, 2, 5, 0),
+    filevers=(1, 2, 6, 0),
+    prodvers=(1, 2, 6, 0),
     mask=0x3F,
     flags=0x0,
     OS=0x40004,
@@ -20,12 +20,12 @@ VSVersionInfo(
           [
             StringStruct("CompanyName", "g3fps"),
             StringStruct("FileDescription", "Twitch Auto Recorder"),
-            StringStruct("FileVersion", "1.2.5.0"),
+            StringStruct("FileVersion", "1.2.6.0"),
             StringStruct("InternalName", "TwitchRecorder"),
             StringStruct("LegalCopyright", "Copyright (c) g3fps"),
             StringStruct("OriginalFilename", "TwitchRecorder.exe"),
             StringStruct("ProductName", "Twitch Auto Recorder"),
-            StringStruct("ProductVersion", "1.2.5.0"),
+            StringStruct("ProductVersion", "1.2.6.0"),
           ],
         )
       ]
