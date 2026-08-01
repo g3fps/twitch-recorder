@@ -2,16 +2,13 @@
 
 Desktop app that waits for any Twitch streamers you add to go live, then records each stream to a local folder.
 
-## Quick start (distributed `.exe`)
-
-### Option A — Windows installer (recommended)
+## Quick start
 
 1. Download **`TwitchRecorderSetup.exe`** from [Releases](https://github.com/g3fps/twitch-recorder/releases)
-2. Run it — normal installer wizard (progress bar, options, finish)
-3. Optionally create **Start Menu** / **Desktop** shortcuts
-4. Optionally **Launch** the app when setup finishes
+2. Run it — installer wizard (progress, shortcuts, finish)
+3. Optionally **Launch** when setup finishes
 
-Installs to `%LOCALAPPDATA%\TwitchRecorder` (no admin required).
+That is the only distributed build. It installs to `%LOCALAPPDATA%\TwitchRecorder` (no admin) and places `TwitchRecorder.exe` there for you.
 
 ### Updating
 
@@ -20,22 +17,9 @@ On launch the app checks GitHub Releases. If a newer version exists:
 - An **Update to v…** button appears in the header
 - When you're not monitoring, a one-time popup asks whether to install now
 
-Installing downloads `TwitchRecorderSetup.exe`, launches it, and closes the app so files can be replaced. Your `config.yaml` is kept. You can also run the latest setup from [Releases](https://github.com/g3fps/twitch-recorder/releases) manually.
+That downloads and runs the latest **`TwitchRecorderSetup.exe`** (settings in `config.yaml` are kept).
 
-### Option B — Install.bat
-
-1. Download **`TwitchRecorder.exe`** and **`Install.bat`** into the same folder
-2. Run **`Install.bat`**
-3. When asked **Add Start Menu shortcut?** press Enter for Yes (or `n` to skip)
-
-### Option C — Just the exe
-
-1. Download **`TwitchRecorder.exe`** and double-click it
-2. On first launch, accept **Add to Start Menu?** if you want (you can also use the **Add to Start Menu** button later)
-3. If FFmpeg is missing, click **Yes** when asked to auto-install (needs internet once)
-4. Add streamer usernames → **Start monitoring**
-
-No Python install required on the target PC. Streamlink is bundled in the exe. FFmpeg is auto-installed on first run if needed (uses winget, or a portable download to `%LOCALAPPDATA%\TwitchRecorder\tools`).
+No Python install required on the target PC. Streamlink is bundled. FFmpeg is auto-installed on first run if needed (winget, or portable under `%LOCALAPPDATA%\TwitchRecorder\tools`).
 
 ### Blocked as a virus? (false positive)
 
@@ -43,20 +27,19 @@ Windows Defender and some browsers often flag **unsigned PyInstaller** exes (sam
 
 **To download / run anyway on your PC:**
 
-1. Prefer the **`.zip`** asset on Releases (less often blocked mid-download), then extract  
-2. Or download **`TwitchRecorderSetup.exe`**, then in Explorer: right‑click → **Properties** → check **Unblock** → OK  
-3. Windows Security → **Virus & threat protection** → **Protection history** → find the block → **Actions → Allow / Restore**  
-4. Optional exclusion (PowerShell as Admin):
+1. Download **`TwitchRecorderSetup.exe`**, then in Explorer: right‑click → **Properties** → check **Unblock** → OK  
+2. Windows Security → **Virus & threat protection** → **Protection history** → find the block → **Actions → Allow / Restore**  
+3. Optional exclusion (PowerShell as Admin):
 
 ```powershell
 Add-MpPreference -ExclusionPath "$env:LOCALAPPDATA\TwitchRecorder"
 Add-MpPreference -ExclusionPath "$env:USERPROFILE\Downloads"
 ```
 
-5. Or skip the exe: clone the repo and run `python gui.py` after `pip install -r requirements.txt`
+4. Or skip the installer: clone the repo and run `python gui.py` after `pip install -r requirements.txt`
 
 **Report the false positive to Microsoft** (helps everyone, takes a few days):  
-https://www.microsoft.com/en-us/wdsi/filesubmission — choose *Software developer* / *Should not be detected (false positive)*, upload the release exe, note it’s open source at https://github.com/g3fps/twitch-recorder
+https://www.microsoft.com/en-us/wdsi/filesubmission — choose *Software developer* / *Should not be detected (false positive)*, upload the setup from Releases, note it’s open source at https://github.com/g3fps/twitch-recorder
 
 **Real long-term fix:** a paid **code-signing certificate** so SmartScreen/Defender trust the publisher. Without that, each new build can get re-flagged until reputation builds.
 
@@ -105,7 +88,7 @@ Then (requires [Inno Setup 6](https://jrsoftware.org/isinfo.php)):
 build_installer.bat
 ```
 
-Outputs: `TwitchRecorder.exe` and `TwitchRecorderSetup.exe`.
+Outputs: `TwitchRecorderSetup.exe` (for Releases). `TwitchRecorder.exe` is only an intermediate build artifact used by the installer.
 ## Usage
 
 1. Add one or more Twitch usernames (or paste a channel URL)
