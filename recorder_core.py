@@ -15,7 +15,13 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from deps import ffmpeg_cmd, find_streamlink, streamlink_available, streamlink_cmd
+from deps import (
+    ffmpeg_cmd,
+    find_streamlink,
+    streamlink_available,
+    streamlink_cmd,
+    subprocess_hidden_kwargs,
+)
 
 StatusCallback = Callable[[str, str, str], None]
 LogCallback = Callable[[str], None]
@@ -273,7 +279,25 @@ class ChannelWorker(threading.Thread):
 
     def _fetch_stream_info(self) -> dict:
         url = f"https://www.twitch.tv/{self.channel}"
-        # Prefer CLI when available
+
+        # Prefer in-process Streamlink API — no console windows while polling
+        try:
+            from streamlink import Streamlink
+
+            session = Streamlink()
+            if self.config.disable_reruns:
+                session.set_option("twitch-disable-reruns", True)
+            streams = session.streams(url)
+            return {
+                "live": bool(streams),
+                "title": "",
+                "author": "",
+                "category": "",
+            }
+        except Exception:  # noqa: BLE001
+            pass
+
+        # CLI fallback (hidden console)
         if find_streamlink_safe():
             result = subprocess.run(
                 [*streamlink_cmd(), "--json", url],
@@ -283,6 +307,7 @@ class ChannelWorker(threading.Thread):
                 errors="replace",
                 timeout=60,
                 check=False,
+                **subprocess_hidden_kwargs(),
             )
             if result.returncode == 0:
                 try:
@@ -297,18 +322,7 @@ class ChannelWorker(threading.Thread):
                     }
                 except json.JSONDecodeError:
                     pass
-
-        # Bundled Streamlink Python API
-        try:
-            from streamlink import Streamlink
-
-            session = Streamlink()
-            if self.config.disable_reruns:
-                session.set_option("twitch-disable-reruns", True)
-            streams = session.streams(url)
-            return {"live": bool(streams), "title": "", "author": "", "category": ""}
-        except Exception:  # noqa: BLE001
-            return {"live": False}
+        return {"live": False}
 
     def _build_streamlink_cmd(self, out_path: Path, url: str) -> list[str]:
         cmd = [*streamlink_cmd()]
@@ -347,11 +361,16 @@ class ChannelWorker(threading.Thread):
         out_path.parent.mkdir(parents=True, exist_ok=True)
         url = f"https://www.twitch.tv/{self.channel}"
 
-        # Prefer CLI when streamlink.exe exists; else bundled Python API
+        # Prefer in-process API so recording never opens a console window
+        try:
+            import streamlink  # noqa: F401
+
+            return self._record_with_api(out_path, url)
+        except ImportError:
+            pass
+
         if find_streamlink_safe() or _cli_module_works():
             return self._record_with_cli(out_path, url)
-        if streamlink_available():
-            return self._record_with_api(out_path, url)
         self._log("[error] streamlink not available — use Setup tools in the app")
         return False
 
@@ -372,6 +391,7 @@ class ChannelWorker(threading.Thread):
                     text=True,
                     encoding="utf-8",
                     errors="replace",
+                    **subprocess_hidden_kwargs(),
                 )
                 proc = self._proc
 
@@ -396,7 +416,6 @@ class ChannelWorker(threading.Thread):
             self._stats_stop.set()
             with self._proc_lock:
                 self._proc = None
-
     def _record_with_api(self, out_path: Path, url: str) -> bool:
         try:
             from streamlink import Streamlink
@@ -497,6 +516,7 @@ class ChannelWorker(threading.Thread):
                 errors="replace",
                 timeout=3600,
                 check=False,
+                **subprocess_hidden_kwargs(),
             )
             if result.returncode == 0 and mp4_path.exists() and mp4_path.stat().st_size > 0:
                 try:

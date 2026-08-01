@@ -15,6 +15,20 @@ from typing import Callable
 ProgressCb = Callable[[str], None]
 
 
+def subprocess_hidden_kwargs() -> dict:
+    """kwargs so Windows does not flash console windows for child processes."""
+    if not sys.platform.startswith("win"):
+        return {}
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    startupinfo.wShowWindow = 0  # SW_HIDE
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+    return {
+        "startupinfo": startupinfo,
+        "creationflags": flags,
+    }
+
+
 def app_dir() -> Path:
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
@@ -129,6 +143,7 @@ def _winget_install(package_id: str, log: ProgressCb) -> bool:
             errors="replace",
             timeout=600,
             check=False,
+            **subprocess_hidden_kwargs(),
         )
         # 0 success, -1978335189 already installed (sometimes)
         if result.returncode == 0:
@@ -224,6 +239,7 @@ def install_streamlink(log: ProgressCb) -> bool:
                 text=True,
                 timeout=600,
                 check=False,
+                **subprocess_hidden_kwargs(),
             )
             if result.returncode == 0:
                 _refresh_path()
@@ -359,13 +375,23 @@ def create_start_menu_shortcut(target: Path | None = None) -> Path:
         f"$s.Save()"
     )
     result = subprocess.run(
-        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+        [
+            "powershell",
+            "-NoProfile",
+            "-WindowStyle",
+            "Hidden",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ],
         capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",
         timeout=60,
         check=False,
+        **subprocess_hidden_kwargs(),
     )
     if result.returncode != 0 or not shortcut.is_file():
         err = (result.stderr or result.stdout or "unknown error").strip()
