@@ -392,7 +392,25 @@ class App(ctk.CTk):
         )
         self.open_log_btn.grid(row=0, column=6, padx=(6, 12), pady=12)
 
+    def _add_start_menu(self) -> None:
+        try:
+            path = create_start_menu_shortcut()
+            mark_start_menu_prompted()
+            self._append_log(f"Start Menu shortcut created: {path}")
+            if not self._monitoring:
+                messagebox.showinfo(
+                    "Start Menu",
+                    "Added to the Start Menu as “Twitch Auto Recorder”.\n"
+                    "Search for it in Start, or pin it from there.",
+                )
+        except Exception as exc:  # noqa: BLE001
+            self._append_log(f"Start Menu shortcut failed: {exc}")
+            if not self._monitoring:
+                messagebox.showerror("Start Menu", f"Could not create shortcut:\n{exc}")
+
     def _maybe_ask_start_menu(self) -> None:
+        if self._monitoring:
+            return
         if not should_ask_start_menu():
             return
         mark_start_menu_prompted()
@@ -405,21 +423,9 @@ class App(ctk.CTk):
         ):
             self._add_start_menu()
 
-    def _add_start_menu(self) -> None:
-        try:
-            path = create_start_menu_shortcut()
-            mark_start_menu_prompted()
-            self._append_log(f"Start Menu shortcut created: {path}")
-            messagebox.showinfo(
-                "Start Menu",
-                "Added to the Start Menu as “Twitch Auto Recorder”.\n"
-                "Search for it in Start, or pin it from there.",
-            )
-        except Exception as exc:  # noqa: BLE001
-            self._append_log(f"Start Menu shortcut failed: {exc}")
-            messagebox.showerror("Start Menu", f"Could not create shortcut:\n{exc}")
-
     def _check_deps_on_startup(self) -> None:
+        if self._monitoring:
+            return
         summary = status_summary()
         self._append_log(f"Tools — streamlink: {summary['streamlink']}")
         self._append_log(f"Tools — ffmpeg: {summary['ffmpeg']}")
@@ -434,6 +440,9 @@ class App(ctk.CTk):
                 self._setup_tools()
 
     def _setup_tools(self) -> None:
+        if self._monitoring:
+            self._append_log("Stop monitoring before running Setup tools")
+            return
         self.setup_btn.configure(state="disabled")
         self._append_log("Setting up tools…")
 
@@ -639,6 +648,8 @@ class App(ctk.CTk):
         self.add_btn.configure(state="disabled")
         self.remove_btn.configure(state="disabled")
         self.channel_entry.configure(state="disabled")
+        self.setup_btn.configure(state="disabled")
+        self.start_menu_btn.configure(state="disabled")
         self.title("Twitch Auto Recorder — monitoring")
 
         threading.Thread(
@@ -716,16 +727,12 @@ class App(ctk.CTk):
                         ch = data.get("channel", "")
                         title = data.get("title") or ""
                         self._append_log(f"[{ch}] went live" + (f": {title}" if title else ""))
+                        # Never steal focus / pop windows while running — optional beep + log only
                         if self.beep_var.get():
                             try:
                                 winsound.MessageBeep(winsound.MB_ICONASTERISK)
                             except Exception:  # noqa: BLE001
                                 pass
-                        try:
-                            self.deiconify()
-                            self.lift()
-                        except Exception:  # noqa: BLE001
-                            pass
                     elif event_kind == "saved":
                         self._refresh_history()
                 elif kind == "deps_done":
@@ -736,11 +743,13 @@ class App(ctk.CTk):
                         f"ffmpeg: {summary.get('ffmpeg')}"
                     )
                     if not payload.get("ok"):
-                        messagebox.showwarning(
-                            "Setup incomplete",
-                            "Streamlink is still missing. Recording may not work.\n"
-                            "Try installing from https://streamlink.github.io/ or winget.",
+                        msg = (
+                            "Streamlink is still missing. Recording may not work. "
+                            "Try Setup tools, or install from https://streamlink.github.io/"
                         )
+                        self._append_log(f"Setup incomplete: {msg}")
+                        if not self._monitoring:
+                            messagebox.showwarning("Setup incomplete", msg)
                 elif kind == "stopped":
                     self._monitoring = False
                     self.start_btn.configure(state="normal")
@@ -748,6 +757,8 @@ class App(ctk.CTk):
                     self.add_btn.configure(state="normal")
                     self.remove_btn.configure(state="normal")
                     self.channel_entry.configure(state="normal")
+                    self.setup_btn.configure(state="normal")
+                    self.start_menu_btn.configure(state="normal")
                     self.title("Twitch Auto Recorder")
                     for widgets in self.row_widgets.values():
                         if widgets["badge"].cget("text") != "Idle":
