@@ -13,8 +13,20 @@ No Python install required on the target PC. Streamlink is bundled in the exe. F
 
 Windows may show a SmartScreen warning for an unsigned exe — choose **More info → Run anyway** if you trust the build.
 
-**VirusTotal (v1.0.0):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c)  
+**VirusTotal (v1.0.0):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c) — **3/70** (false positives; see below)  
 SHA256: `8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c`
+
+### Why VirusTotal shows a few detections
+
+This build is an **unsigned PyInstaller** exe (Python + libraries packed into one file). Many AVs treat that packing style as suspicious even when the app is clean. The source for this project is public in this repo — you can also run `python gui.py` instead of the exe.
+
+| Vendor | Label | Why it’s a false positive |
+|--------|--------|---------------------------|
+| **Microsoft** | `Trojan:Win32/Wacatac.B!ml` | Machine-learning heuristic. `Wacatac` is commonly raised on new/unsigned PyInstaller and similar packed exes that don’t have an established reputation yet — not a known malware family match for this app. |
+| **Bkav Pro** | `W32.Malware.C712EF2E` | Generic packed-executable / heuristic hit (hash-style label). Typical for one-file Python builds with an overlay; not a specific Trojan identification. |
+| **Cynet** / **SecureAge** | `Malicious` | Broad behavioral/ML “unknown packed binary” verdict with no concrete family name — same class of false positive as other unsigned distributors. |
+
+The other ~67 engines on that report mark the file **Undetected**. A proper **code-signing certificate** (and rebuilding/signing the exe) is the usual long-term fix for SmartScreen and these heuristics.
 
 ## Develop from source
 
