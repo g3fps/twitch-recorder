@@ -1,6 +1,6 @@
 ; Twitch Auto Recorder - Inno Setup installer
 #define MyAppName "Twitch Auto Recorder"
-#define MyAppVersion "1.2.2"
+#define MyAppVersion "1.2.3"
 #define MyAppPublisher "g3fps"
 #define MyAppURL "https://github.com/g3fps/twitch-recorder"
 #define MyAppExeName "TwitchRecorder.exe"
@@ -28,10 +28,12 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
-VersionInfoVersion=1.2.2.0
+VersionInfoVersion=1.2.3.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup
 VersionInfoProductName={#MyAppName}
+CloseApplications=yes
+RestartApplications=no
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

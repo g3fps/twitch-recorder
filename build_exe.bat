@@ -9,6 +9,8 @@ python -m PyInstaller --noconfirm --clean --windowed --onefile ^
   --hidden-import yaml ^
   --hidden-import recorder_core ^
   --hidden-import deps ^
+  --hidden-import updater ^
+  --hidden-import version ^
   --hidden-import streamlink ^
   --hidden-import streamlink.plugins.twitch ^
   --distpath dist ^

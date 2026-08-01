@@ -24,6 +24,13 @@ from deps import (
     status_summary,
 )
 from recorder_core import RecorderConfig, RecorderManager, load_history
+from updater import (
+    download_installer,
+    fetch_latest_release,
+    is_newer,
+    launch_installer,
+)
+from version import APP_VERSION, GITHUB_RELEASES_URL
 
 
 def _app_dir() -> Path:
@@ -158,9 +165,10 @@ class App(ctk.CTk):
         self.after(2000, self._tick_disk)
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        self._append_log("Ready. Add a Twitch channel, then Start monitoring.")
+        self._append_log(f"Ready (v{APP_VERSION}). Add a Twitch channel, then Start monitoring.")
         self.after(300, self._check_deps_on_startup)
         self.after(600, self._maybe_ask_start_menu)
+        self.after(2500, self._quiet_update_check)
         if "--start" in sys.argv and self.channels:
             self.after(800, self._start)
 
@@ -178,8 +186,13 @@ class App(ctk.CTk):
             font=ctk.CTkFont(size=22, weight="bold"),
         ).grid(row=0, column=0, sticky="w")
 
+        self.version_label = ctk.CTkLabel(
+            header_row, text=f"v{APP_VERSION}", text_color="#888888"
+        )
+        self.version_label.grid(row=0, column=1, sticky="e", padx=(8, 12))
+
         self.disk_label = ctk.CTkLabel(header_row, text="", text_color="#888888")
-        self.disk_label.grid(row=0, column=1, sticky="e")
+        self.disk_label.grid(row=0, column=2, sticky="e")
 
         controls = ctk.CTkFrame(self)
         controls.grid(row=1, column=0, sticky="ew", padx=16, pady=8)
@@ -387,10 +400,15 @@ class App(ctk.CTk):
         )
         self.start_menu_btn.grid(row=0, column=5, padx=6, pady=12)
 
+        self.update_btn = ctk.CTkButton(
+            footer, text="Check for updates", width=130, command=self._check_for_updates
+        )
+        self.update_btn.grid(row=0, column=6, padx=6, pady=12)
+
         self.open_log_btn = ctk.CTkButton(
             footer, text="Open log", width=90, command=self._open_log
         )
-        self.open_log_btn.grid(row=0, column=6, padx=(6, 12), pady=12)
+        self.open_log_btn.grid(row=0, column=7, padx=(6, 12), pady=12)
 
     def _add_start_menu(self) -> None:
         try:
@@ -463,6 +481,103 @@ class App(ctk.CTk):
             )
 
         threading.Thread(target=work, daemon=True).start()
+
+    def _quiet_update_check(self) -> None:
+        """Background check — log only, never steal focus."""
+
+        def work() -> None:
+            try:
+                info = fetch_latest_release()
+                if is_newer(info.version):
+                    self.event_queue.put(
+                        (
+                            "log",
+                            None,
+                            f"Update available: v{info.version} (you have v{APP_VERSION}). "
+                            "Click Check for updates when idle, or download from "
+                            f"{GITHUB_RELEASES_URL}",
+                        )
+                    )
+            except Exception:  # noqa: BLE001
+                pass
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _check_for_updates(self) -> None:
+        if self._monitoring:
+            self._append_log("Stop monitoring before installing an update")
+            return
+        self.update_btn.configure(state="disabled")
+        self._append_log(f"Checking for updates (current v{APP_VERSION})…")
+
+        def work() -> None:
+            try:
+                info = fetch_latest_release()
+                self.event_queue.put(("update_check", None, {"ok": True, "info": info}))
+            except Exception as exc:  # noqa: BLE001
+                self.event_queue.put(
+                    ("update_check", None, {"ok": False, "error": str(exc)})
+                )
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _offer_update(self, info) -> None:
+        self._append_log(f"Latest release: {info.tag}")
+        if not is_newer(info.version):
+            self._append_log(f"You are up to date (v{APP_VERSION}).")
+            if not self._monitoring:
+                messagebox.showinfo(
+                    "Up to date",
+                    f"You already have the latest version (v{APP_VERSION}).",
+                )
+            return
+        prompt = (
+            f"Version {info.version} is available (you have {APP_VERSION}).\n\n"
+            "Download and run the installer now?\n"
+            "Your settings in config.yaml are kept. The app will close so the "
+            "installer can replace the files."
+        )
+        if not messagebox.askyesno("Update available", prompt):
+            self._append_log(
+                f"Update skipped. Download anytime: {info.html_url or GITHUB_RELEASES_URL}"
+            )
+            return
+        self.update_btn.configure(state="disabled")
+        self._append_log(f"Downloading {info.tag} installer…")
+
+        def work() -> None:
+            try:
+
+                def log(msg: str) -> None:
+                    self.event_queue.put(("log", None, msg))
+
+                path = download_installer(info.setup_url, log=log)
+                self.event_queue.put(("update_ready", None, {"ok": True, "path": str(path)}))
+            except Exception as exc:  # noqa: BLE001
+                self.event_queue.put(
+                    ("update_ready", None, {"ok": False, "error": str(exc)})
+                )
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _apply_downloaded_update(self, setup_path: str) -> None:
+        self._append_log("Launching installer — close this app if it stays open.")
+        try:
+            launch_installer(Path(setup_path))
+        except Exception as exc:  # noqa: BLE001
+            self._append_log(f"Could not launch installer: {exc}")
+            if not self._monitoring:
+                messagebox.showerror("Update", f"Could not launch installer:\n{exc}")
+            self.update_btn.configure(state="normal")
+            return
+        # Quit so Inno Setup can replace TwitchRecorder.exe
+        try:
+            self._persist()
+        except Exception:  # noqa: BLE001
+            pass
+        if self._monitoring:
+            self.manager.stop()
+        self.destroy()
 
     def _toggle_options(self) -> None:
         self._options_visible = not self._options_visible
@@ -650,6 +765,7 @@ class App(ctk.CTk):
         self.channel_entry.configure(state="disabled")
         self.setup_btn.configure(state="disabled")
         self.start_menu_btn.configure(state="disabled")
+        self.update_btn.configure(state="disabled")
         self.title("Twitch Auto Recorder — monitoring")
 
         threading.Thread(
@@ -750,6 +866,29 @@ class App(ctk.CTk):
                         self._append_log(f"Setup incomplete: {msg}")
                         if not self._monitoring:
                             messagebox.showwarning("Setup incomplete", msg)
+                elif kind == "update_check":
+                    if not self._monitoring:
+                        self.update_btn.configure(state="normal")
+                    if not payload.get("ok"):
+                        err = payload.get("error") or "unknown error"
+                        self._append_log(f"Update check failed: {err}")
+                        if not self._monitoring:
+                            messagebox.showerror(
+                                "Update check failed",
+                                f"{err}\n\nManual download:\n{GITHUB_RELEASES_URL}",
+                            )
+                    else:
+                        self._offer_update(payload["info"])
+                elif kind == "update_ready":
+                    if not self._monitoring:
+                        self.update_btn.configure(state="normal")
+                    if not payload.get("ok"):
+                        err = payload.get("error") or "unknown error"
+                        self._append_log(f"Update download failed: {err}")
+                        if not self._monitoring:
+                            messagebox.showerror("Update download failed", err)
+                    else:
+                        self._apply_downloaded_update(str(payload["path"]))
                 elif kind == "stopped":
                     self._monitoring = False
                     self.start_btn.configure(state="normal")
@@ -759,6 +898,7 @@ class App(ctk.CTk):
                     self.channel_entry.configure(state="normal")
                     self.setup_btn.configure(state="normal")
                     self.start_menu_btn.configure(state="normal")
+                    self.update_btn.configure(state="normal")
                     self.title("Twitch Auto Recorder")
                     for widgets in self.row_widgets.values():
                         if widgets["badge"].cget("text") != "Idle":

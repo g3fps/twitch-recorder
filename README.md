@@ -13,6 +13,17 @@ Desktop app that waits for any Twitch streamers you add to go live, then records
 
 Installs to `%LOCALAPPDATA%\TwitchRecorder` (no admin required).
 
+### Updating
+
+Releases do **not** auto-overwrite your install. To update:
+
+1. In the app (when not monitoring): **Check for updates** — downloads the new `TwitchRecorderSetup.exe` and launches it, or  
+2. Manually download/run the latest **`TwitchRecorderSetup.exe`** from [Releases](https://github.com/g3fps/twitch-recorder/releases)
+
+Same installer AppId upgrades in place and keeps your `config.yaml` / recordings paths. Quit the app before the installer replaces `TwitchRecorder.exe` (the in-app updater closes itself).
+
+On launch, the app quietly checks GitHub and only writes a log line if a newer version exists (no popup).
+
 ### Option B — Install.bat
 
 1. Download **`TwitchRecorder.exe`** and **`Install.bat`** into the same folder
