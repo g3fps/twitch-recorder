@@ -23,7 +23,9 @@ No Python install required on the target PC. Streamlink is bundled. FFmpeg is au
 
 ### Blocked as a virus? (false positive)
 
-Windows Defender and some browsers often flag **unsigned PyInstaller** exes (same pattern malware uses). This project’s source is public; the detection is almost always a heuristic, not a real Trojan.
+Windows Defender and some browsers often flag **unsigned PyInstaller** builds (same pattern malware uses). This project’s source is public; the detection is almost always a heuristic, not a real Trojan.
+
+From **v1.2.7** the installer ships a **folder build** (not a one-file exe that unpacks to `%TEMP%\_MEI…`). That avoids the common “Failed to load Python DLL” crash when Defender deletes `python312.dll` from Temp mid-launch.
 
 **To download / run anyway on your PC:**
 
@@ -88,7 +90,7 @@ Then (requires [Inno Setup 6](https://jrsoftware.org/isinfo.php)):
 build_installer.bat
 ```
 
-Outputs: `TwitchRecorderSetup.exe` (for Releases). `TwitchRecorder.exe` is only an intermediate build artifact used by the installer.
+Outputs: `TwitchRecorderSetup.exe` (for Releases). The app folder is built under `dist\TwitchRecorder\` and packaged by the installer.
 ## Usage
 
 1. Add one or more Twitch usernames (or paste a channel URL)

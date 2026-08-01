@@ -1,8 +1,8 @@
 @echo off
 cd /d "%~dp0"
-echo Building TwitchRecorder.exe (one-file, with streamlink bundled) ...
+echo Building TwitchRecorder (one-dir — avoids Temp\_MEI unpack that Defender often deletes) ...
 python -m pip install -q pyinstaller streamlink pyyaml customtkinter
-python -m PyInstaller --noconfirm --clean --windowed --onefile ^
+python -m PyInstaller --noconfirm --clean --windowed --onedir ^
   --name TwitchRecorder ^
   --version-file file_version_info.txt ^
   --collect-all customtkinter ^
@@ -23,8 +23,7 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-copy /Y dist\TwitchRecorder.exe TwitchRecorder.exe >nul
 echo.
-echo Done: TwitchRecorder.exe
-echo On first run, missing FFmpeg/Streamlink CLI can be auto-installed.
+echo Done: dist\TwitchRecorder\TwitchRecorder.exe
+echo Next: build_installer.bat
 pause

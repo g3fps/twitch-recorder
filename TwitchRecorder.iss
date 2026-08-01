@@ -1,6 +1,6 @@
 ; Twitch Auto Recorder - Inno Setup installer
 #define MyAppName "Twitch Auto Recorder"
-#define MyAppVersion "1.2.6"
+#define MyAppVersion "1.2.7"
 #define MyAppPublisher "g3fps"
 #define MyAppURL "https://github.com/g3fps/twitch-recorder"
 #define MyAppExeName "TwitchRecorder.exe"
@@ -30,7 +30,7 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
-VersionInfoVersion=1.2.6.0
+VersionInfoVersion=1.2.7.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup
 VersionInfoProductName={#MyAppName}
@@ -45,7 +45,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "startmenu"; Description: "Create a Start Menu shortcut"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkedonce
 
 [Files]
-Source: "TwitchRecorder.exe"; DestDir: "{app}"; Flags: ignoreversion
+; One-dir PyInstaller build — no runtime unpack to %TEMP%\_MEI* (Defender often deletes python*.dll there)
+Source: "dist\TwitchRecorder\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "config.example.yaml"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
 

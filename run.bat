@@ -1,11 +1,11 @@
 @echo off
 cd /d "%~dp0"
-if exist "%~dp0TwitchRecorder.exe" (
-  start "" "%~dp0TwitchRecorder.exe"
+if exist "%~dp0dist\TwitchRecorder\TwitchRecorder.exe" (
+  start "" "%~dp0dist\TwitchRecorder\TwitchRecorder.exe"
   exit /b 0
 )
-if exist "%~dp0dist\TwitchRecorder.exe" (
-  start "" "%~dp0dist\TwitchRecorder.exe"
+if exist "%~dp0TwitchRecorder.exe" (
+  start "" "%~dp0TwitchRecorder.exe"
   exit /b 0
 )
 python gui.py

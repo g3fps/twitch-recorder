@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
-if not exist "%~dp0TwitchRecorder.exe" (
-  echo TwitchRecorder.exe missing. Run build_exe.bat first.
+if not exist "%~dp0dist\TwitchRecorder\TwitchRecorder.exe" (
+  echo dist\TwitchRecorder\TwitchRecorder.exe missing. Run build_exe.bat first.
   pause
   exit /b 1
 )
