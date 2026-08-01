@@ -4,14 +4,17 @@ Desktop app that waits for any Twitch streamers you add to go live, then records
 
 ## Quick start (distributed `.exe`)
 
-1. Download **`TwitchRecorder.exe`** from Releases (or build it yourself)
+1. Download **`TwitchRecorder.exe`** from [Releases](https://github.com/g3fps/twitch-recorder/releases)
 2. Double-click it
 3. If FFmpeg is missing, click **Yes** when asked to auto-install (needs internet once)
 4. Add streamer usernames → **Start monitoring**
 
-No Python install required on the target PC. Streamlink is bundled in the exe. FFmpeg is auto-installed on first run if needed (via winget, or a portable download to `%LOCALAPPDATA%\TwitchRecorder\tools`).
+No Python install required on the target PC. Streamlink is bundled in the exe. FFmpeg is auto-installed on first run if needed (uses winget, or a portable download to `%LOCALAPPDATA%\TwitchRecorder\tools`).
 
 Windows may show a SmartScreen warning for an unsigned exe — choose **More info → Run anyway** if you trust the build.
+
+**VirusTotal (v1.0.0):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c)  
+SHA256: `8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c`
 
 ## Develop from source
 
