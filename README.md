@@ -15,14 +15,12 @@ Installs to `%LOCALAPPDATA%\TwitchRecorder` (no admin required).
 
 ### Updating
 
-Releases do **not** auto-overwrite your install. To update:
+On launch the app checks GitHub Releases. If a newer version exists:
 
-1. In the app (when not monitoring): **Check for updates** — downloads the new `TwitchRecorderSetup.exe` and launches it, or  
-2. Manually download/run the latest **`TwitchRecorderSetup.exe`** from [Releases](https://github.com/g3fps/twitch-recorder/releases)
+- An **Update to v…** button appears in the header
+- When you're not monitoring, a one-time popup asks whether to install now
 
-Same installer AppId upgrades in place and keeps your `config.yaml` / recordings paths. Quit the app before the installer replaces `TwitchRecorder.exe` (the in-app updater closes itself).
-
-On launch, the app quietly checks GitHub and only writes a log line if a newer version exists (no popup).
+Installing downloads `TwitchRecorderSetup.exe`, launches it, and closes the app so files can be replaced. Your `config.yaml` is kept. You can also run the latest setup from [Releases](https://github.com/g3fps/twitch-recorder/releases) manually.
 
 ### Option B — Install.bat
 
