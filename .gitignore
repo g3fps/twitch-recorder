@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+recorder.log
+history.json
+recordings/
+.venv/
+venv/
+*.ts
+*.mp4
+*.part
+build/
+dist/
+*.spec
+TwitchRecorder.exe
+config.yaml
