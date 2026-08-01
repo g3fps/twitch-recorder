@@ -4,6 +4,7 @@ echo Building TwitchRecorder.exe (one-file, with streamlink bundled) ...
 python -m pip install -q pyinstaller streamlink pyyaml customtkinter
 python -m PyInstaller --noconfirm --clean --windowed --onefile ^
   --name TwitchRecorder ^
+  --version-file file_version_info.txt ^
   --collect-all customtkinter ^
   --collect-all streamlink ^
   --hidden-import yaml ^

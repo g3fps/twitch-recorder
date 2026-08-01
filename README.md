@@ -37,7 +37,30 @@ Installing downloads `TwitchRecorderSetup.exe`, launches it, and closes the app 
 
 No Python install required on the target PC. Streamlink is bundled in the exe. FFmpeg is auto-installed on first run if needed (uses winget, or a portable download to `%LOCALAPPDATA%\TwitchRecorder\tools`).
 
-Windows may show a SmartScreen warning for an unsigned exe — choose **More info → Run anyway** if you trust the build.
+### Blocked as a virus? (false positive)
+
+Windows Defender and some browsers often flag **unsigned PyInstaller** exes (same pattern malware uses). This project’s source is public; the detection is almost always a heuristic, not a real Trojan.
+
+**To download / run anyway on your PC:**
+
+1. Prefer the **`.zip`** asset on Releases (less often blocked mid-download), then extract  
+2. Or download **`TwitchRecorderSetup.exe`**, then in Explorer: right‑click → **Properties** → check **Unblock** → OK  
+3. Windows Security → **Virus & threat protection** → **Protection history** → find the block → **Actions → Allow / Restore**  
+4. Optional exclusion (PowerShell as Admin):
+
+```powershell
+Add-MpPreference -ExclusionPath "$env:LOCALAPPDATA\TwitchRecorder"
+Add-MpPreference -ExclusionPath "$env:USERPROFILE\Downloads"
+```
+
+5. Or skip the exe: clone the repo and run `python gui.py` after `pip install -r requirements.txt`
+
+**Report the false positive to Microsoft** (helps everyone, takes a few days):  
+https://www.microsoft.com/en-us/wdsi/filesubmission — choose *Software developer* / *Should not be detected (false positive)*, upload the release exe, note it’s open source at https://github.com/g3fps/twitch-recorder
+
+**Real long-term fix:** a paid **code-signing certificate** so SmartScreen/Defender trust the publisher. Without that, each new build can get re-flagged until reputation builds.
+
+Windows may also show a SmartScreen warning — **More info → Run anyway** if you trust the build.
 
 **VirusTotal (v1.0.0 build):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c) — **3/70** (false positives; see below)  
 v1.0.0 SHA256: `8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c`  
