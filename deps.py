@@ -315,3 +315,73 @@ def ffmpeg_cmd() -> list[str]:
     if exe:
         return [str(exe)]
     return ["ffmpeg"]
+
+
+def target_exe_path() -> Path:
+    """Path to the app executable (frozen) or python running gui.py."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve()
+    return app_dir() / "TwitchRecorder.exe"
+
+
+def start_menu_shortcut_path() -> Path:
+    programs = Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+    return programs / "Twitch Auto Recorder.lnk"
+
+
+def start_menu_shortcut_exists() -> bool:
+    return start_menu_shortcut_path().is_file()
+
+
+def create_start_menu_shortcut(target: Path | None = None) -> Path:
+    """Create/update a Start Menu shortcut. Returns the .lnk path."""
+    if not sys.platform.startswith("win"):
+        raise OSError("Start Menu shortcuts are only supported on Windows")
+
+    exe = (target or target_exe_path()).resolve()
+    if not exe.is_file():
+        raise FileNotFoundError(f"App executable not found: {exe}")
+
+    shortcut = start_menu_shortcut_path()
+    shortcut.parent.mkdir(parents=True, exist_ok=True)
+    workdir = str(exe.parent)
+
+    # Escape for PowerShell single-quoted strings
+    def _ps_quote(value: str) -> str:
+        return value.replace("'", "''")
+
+    script = (
+        f"$w = New-Object -ComObject WScript.Shell; "
+        f"$s = $w.CreateShortcut('{_ps_quote(str(shortcut))}'); "
+        f"$s.TargetPath = '{_ps_quote(str(exe))}'; "
+        f"$s.WorkingDirectory = '{_ps_quote(workdir)}'; "
+        f"$s.Description = 'Twitch Auto Recorder'; "
+        f"$s.Save()"
+    )
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=60,
+        check=False,
+    )
+    if result.returncode != 0 or not shortcut.is_file():
+        err = (result.stderr or result.stdout or "unknown error").strip()
+        raise RuntimeError(f"Failed to create Start Menu shortcut: {err}")
+    return shortcut
+
+
+def prompt_marker_path() -> Path:
+    base = Path(os.environ.get("LOCALAPPDATA") or str(app_dir())) / "TwitchRecorder"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "start_menu_prompted"
+
+
+def should_ask_start_menu() -> bool:
+    return sys.platform.startswith("win") and not prompt_marker_path().is_file()
+
+
+def mark_start_menu_prompted() -> None:
+    prompt_marker_path().write_text("1\n", encoding="utf-8")

@@ -15,7 +15,14 @@ from tkinter import filedialog, messagebox
 import customtkinter as ctk
 import yaml
 
-from deps import ensure_dependencies, status_summary
+from deps import (
+    create_start_menu_shortcut,
+    ensure_dependencies,
+    mark_start_menu_prompted,
+    should_ask_start_menu,
+    start_menu_shortcut_exists,
+    status_summary,
+)
 from recorder_core import RecorderConfig, RecorderManager, load_history
 
 
@@ -153,6 +160,7 @@ class App(ctk.CTk):
 
         self._append_log("Ready. Add a Twitch channel, then Start monitoring.")
         self.after(300, self._check_deps_on_startup)
+        self.after(600, self._maybe_ask_start_menu)
         if "--start" in sys.argv and self.channels:
             self.after(800, self._start)
 
@@ -374,10 +382,42 @@ class App(ctk.CTk):
         )
         self.setup_btn.grid(row=0, column=4, padx=6, pady=12)
 
+        self.start_menu_btn = ctk.CTkButton(
+            footer, text="Add to Start Menu", width=130, command=self._add_start_menu
+        )
+        self.start_menu_btn.grid(row=0, column=5, padx=6, pady=12)
+
         self.open_log_btn = ctk.CTkButton(
             footer, text="Open log", width=90, command=self._open_log
         )
-        self.open_log_btn.grid(row=0, column=5, padx=(6, 12), pady=12)
+        self.open_log_btn.grid(row=0, column=6, padx=(6, 12), pady=12)
+
+    def _maybe_ask_start_menu(self) -> None:
+        if not should_ask_start_menu():
+            return
+        mark_start_menu_prompted()
+        if start_menu_shortcut_exists():
+            return
+        if messagebox.askyesno(
+            "Start Menu",
+            "Add Twitch Auto Recorder to the Start Menu?\n\n"
+            "You can also do this later with the Add to Start Menu button.",
+        ):
+            self._add_start_menu()
+
+    def _add_start_menu(self) -> None:
+        try:
+            path = create_start_menu_shortcut()
+            mark_start_menu_prompted()
+            self._append_log(f"Start Menu shortcut created: {path}")
+            messagebox.showinfo(
+                "Start Menu",
+                "Added to the Start Menu as “Twitch Auto Recorder”.\n"
+                "Search for it in Start, or pin it from there.",
+            )
+        except Exception as exc:  # noqa: BLE001
+            self._append_log(f"Start Menu shortcut failed: {exc}")
+            messagebox.showerror("Start Menu", f"Could not create shortcut:\n{exc}")
 
     def _check_deps_on_startup(self) -> None:
         summary = status_summary()

@@ -4,8 +4,17 @@ Desktop app that waits for any Twitch streamers you add to go live, then records
 
 ## Quick start (distributed `.exe`)
 
-1. Download **`TwitchRecorder.exe`** from [Releases](https://github.com/g3fps/twitch-recorder/releases)
-2. Double-click it
+### Option A — Installer script (recommended)
+
+1. Download **`TwitchRecorder.exe`** and **`Install.bat`** from [Releases](https://github.com/g3fps/twitch-recorder/releases) into the same folder
+2. Run **`Install.bat`**
+3. When asked **Add Start Menu shortcut?** press Enter for Yes (or `n` to skip)
+4. The app installs to `%LOCALAPPDATA%\TwitchRecorder` and launches
+
+### Option B — Just the exe
+
+1. Download **`TwitchRecorder.exe`** and double-click it
+2. On first launch, accept **Add to Start Menu?** if you want (you can also use the **Add to Start Menu** button later)
 3. If FFmpeg is missing, click **Yes** when asked to auto-install (needs internet once)
 4. Add streamer usernames → **Start monitoring**
 
@@ -13,8 +22,9 @@ No Python install required on the target PC. Streamlink is bundled in the exe. F
 
 Windows may show a SmartScreen warning for an unsigned exe — choose **More info → Run anyway** if you trust the build.
 
-**VirusTotal (v1.0.0):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c) — **3/70** (false positives; see below)  
-SHA256: `8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c`
+**VirusTotal (v1.0.0 build):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c) — **3/70** (false positives; see below)  
+v1.0.0 SHA256: `8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c`  
+v1.1.0 SHA256: `e9d80dc96bd282bb3eff79bf46fd84436b12d5309a6962094e098f3b328dc0b6` (re-upload to VirusTotal after each new exe build)
 
 ### Why VirusTotal shows a few detections
 
