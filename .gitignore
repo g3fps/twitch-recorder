@@ -10,6 +10,8 @@ venv/
 *.part
 build/
 dist/
+dist_installer/
 *.spec
 TwitchRecorder.exe
+TwitchRecorderSetup.exe
 config.yaml

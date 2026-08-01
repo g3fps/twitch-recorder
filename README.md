@@ -4,14 +4,22 @@ Desktop app that waits for any Twitch streamers you add to go live, then records
 
 ## Quick start (distributed `.exe`)
 
-### Option A — Installer script (recommended)
+### Option A — Windows installer (recommended)
 
-1. Download **`TwitchRecorder.exe`** and **`Install.bat`** from [Releases](https://github.com/g3fps/twitch-recorder/releases) into the same folder
+1. Download **`TwitchRecorderSetup.exe`** from [Releases](https://github.com/g3fps/twitch-recorder/releases)
+2. Run it — normal installer wizard (progress bar, options, finish)
+3. Optionally create **Start Menu** / **Desktop** shortcuts
+4. Optionally **Launch** the app when setup finishes
+
+Installs to `%LOCALAPPDATA%\TwitchRecorder` (no admin required).
+
+### Option B — Install.bat
+
+1. Download **`TwitchRecorder.exe`** and **`Install.bat`** into the same folder
 2. Run **`Install.bat`**
 3. When asked **Add Start Menu shortcut?** press Enter for Yes (or `n` to skip)
-4. The app installs to `%LOCALAPPDATA%\TwitchRecorder` and launches
 
-### Option B — Just the exe
+### Option C — Just the exe
 
 1. Download **`TwitchRecorder.exe`** and double-click it
 2. On first launch, accept **Add to Start Menu?** if you want (you can also use the **Add to Start Menu** button later)
@@ -24,7 +32,8 @@ Windows may show a SmartScreen warning for an unsigned exe — choose **More inf
 
 **VirusTotal (v1.0.0 build):** [scan report](https://www.virustotal.com/gui/file/8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c) — **3/70** (false positives; see below)  
 v1.0.0 SHA256: `8fcb0209912e87e58b0319feb2132105de79bad47017aa29728b361511d5172c`  
-v1.1.0 SHA256: `e9d80dc96bd282bb3eff79bf46fd84436b12d5309a6962094e098f3b328dc0b6` (re-upload to VirusTotal after each new exe build)
+v1.1.0 SHA256: `e9d80dc96bd282bb3eff79bf46fd84436b12d5309a6962094e098f3b328dc0b6`  
+v1.2.0 Setup SHA256: `08a084b445657e3c565060143037f368c38e40a822830557d797dee4c6dd9154` (re-upload to VirusTotal after each new build)
 
 ### Why VirusTotal shows a few detections
 
@@ -52,14 +61,19 @@ python gui.py
 
 Or double-click `run.bat`.
 
-### Build the exe
+### Build the exe + installer
 
 ```bat
 build_exe.bat
 ```
 
-Output: `TwitchRecorder.exe` in the project folder (and `dist\`).
+Then (requires [Inno Setup 6](https://jrsoftware.org/isinfo.php)):
 
+```bat
+build_installer.bat
+```
+
+Outputs: `TwitchRecorder.exe` and `TwitchRecorderSetup.exe`.
 ## Usage
 
 1. Add one or more Twitch usernames (or paste a channel URL)
