@@ -175,21 +175,23 @@ class ChannelWorker(threading.Thread):
                 started = time.time()
                 ok = self._record_to(out_path)
                 elapsed = time.time() - started
+                stopped = self.stop_event.is_set()
 
-                if self.stop_event.is_set():
-                    self.on_status(self.channel, "Idle", "Stopped")
-                    self.on_event("idle", {"channel": self.channel})
-                    return
-
-                if ok and out_path.exists() and out_path.stat().st_size > 0:
+                usable = out_path.exists() and out_path.stat().st_size > 0
+                if ok or usable:
                     if self.config.remux_to_mp4:
                         mp4 = self._remux(out_path)
                         final = mp4 if mp4 else out_path
                     else:
                         final = out_path
                     size_mb = final.stat().st_size / (1024 * 1024)
-                    self._log(f"[{self.channel}] Saved {final} ({size_mb:.1f} MB)")
-                    self.on_status(self.channel, "Waiting", f"Last: {final.name}")
+                    note = " (stopped)" if stopped else ""
+                    self._log(f"[{self.channel}] Saved {final} ({size_mb:.1f} MB){note}")
+                    self.on_status(
+                        self.channel,
+                        "Idle" if stopped else "Waiting",
+                        f"Last: {final.name}",
+                    )
                     entry = {
                         "channel": self.channel,
                         "path": str(final),
@@ -202,7 +204,13 @@ class ChannelWorker(threading.Thread):
                     self.on_event("saved", entry)
                 else:
                     self._log(f"[{self.channel}] Recording ended with no usable file")
-                    self.on_status(self.channel, "Waiting", "Waiting for next live…")
+                    if not stopped:
+                        self.on_status(self.channel, "Waiting", "Waiting for next live…")
+
+                if stopped:
+                    self.on_status(self.channel, "Idle", "Stopped")
+                    self.on_event("idle", {"channel": self.channel})
+                    return
 
                 # If stream still live and split enabled, start next segment immediately
                 if self.config.split_hours and self.config.split_hours > 0 and self._is_live():
@@ -659,7 +667,8 @@ class RecorderManager:
         for worker in workers:
             worker.stop_process()
         for worker in workers:
-            worker.join(timeout=12)
+            # Allow remux-after-stop to finish (stream copy is usually quick)
+            worker.join(timeout=180)
         with self._lock:
             self._workers.clear()
         self._recording_channels.clear()
