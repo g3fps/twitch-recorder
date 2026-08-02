@@ -17,7 +17,7 @@ On launch the app checks GitHub Releases. If a newer version exists:
 - An **Update to v…** button appears in the header
 - When you're not monitoring, a one-time popup asks whether to install now
 
-That downloads and runs the latest **`TwitchRecorderSetup.exe`** (settings in `config.yaml` are kept).
+Choosing update downloads `TwitchRecorderSetup.exe`, runs it **silently**, and **relaunches** the app. Your `config.yaml` is kept.
 
 No Python install required on the target PC. Streamlink is bundled. FFmpeg is auto-installed on first run if needed (winget, or portable under `%LOCALAPPDATA%\TwitchRecorder\tools`).
 

@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import sys
 import tempfile
-import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
@@ -125,9 +126,54 @@ def download_installer(
     return dest
 
 
+def installed_app_exe() -> Path:
+    """Path the installer writes to (and what we relaunch after a silent update)."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve()
+    local = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
+    return Path(local) / "TwitchRecorder" / "TwitchRecorder.exe"
+
+
+def launch_silent_update(setup_path: Path, app_exe: Path | None = None) -> None:
+    """
+    Run Inno Setup silently, then relaunch the app.
+
+    Starts a detached cmd so it continues after this process exits and can
+    replace locked files under %LOCALAPPDATA%\\TwitchRecorder.
+    """
+    setup = str(setup_path.resolve())
+    if not os.path.isfile(setup):
+        raise FileNotFoundError(setup)
+    target = str((app_exe or installed_app_exe()).resolve())
+    log_path = str(Path(tempfile.gettempdir()) / "TwitchRecorder-update.log")
+
+    # Brief delay so the current process can exit and unlock files.
+    # /VERYSILENT = no wizard; /FORCECLOSEAPPLICATIONS = replace locked app files.
+    # Relaunch ourselves after setup (Inno [Run] uses skipifsilent).
+    script = (
+        f'ping -n 3 127.0.0.1 >nul & '
+        f'"{setup}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
+        f'/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /LOG="{log_path}" & '
+        f'if exist "{target}" (start "" "{target}")'
+    )
+    creationflags = 0
+    if sys.platform.startswith("win"):
+        creationflags = (
+            getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+            | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        )
+    subprocess.Popen(
+        ["cmd.exe", "/c", script],
+        cwd=str(Path(target).parent) if os.path.isdir(str(Path(target).parent)) else None,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        creationflags=creationflags,
+        close_fds=True,
+    )
+
+
+# Back-compat name used by older call sites
 def launch_installer(setup_path: Path) -> None:
-    path = str(setup_path.resolve())
-    if not os.path.isfile(path):
-        raise FileNotFoundError(path)
-    # Normal UI installer — user must approve; do not use silent flags by default
-    os.startfile(path)  # type: ignore[attr-defined]
+    launch_silent_update(setup_path)

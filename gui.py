@@ -28,7 +28,7 @@ from updater import (
     download_installer,
     fetch_latest_release,
     is_newer,
-    launch_installer,
+    launch_silent_update,
 )
 from version import APP_VERSION, GITHUB_RELEASES_URL
 
@@ -521,10 +521,8 @@ class App(ctk.CTk):
         self._update_popup_shown = True
         prompt = (
             f"Version {info.version} is available (you have {APP_VERSION}).\n\n"
-            "Download and install now?\n"
-            "Your settings are kept. The app will close so the installer can "
-            "replace the files.\n\n"
-            "You can also use the Update button in the header later."
+            "Download, install silently, and relaunch now?\n"
+            "Your settings are kept."
         )
         if messagebox.askyesno("Update available", prompt):
             self._install_pending_update()
@@ -536,8 +534,8 @@ class App(ctk.CTk):
         if self._monitoring:
             self._append_log("Stop monitoring before installing an update")
             return
-        self.update_btn.configure(state="disabled", text="Downloading…")
-        self._append_log(f"Downloading {info.tag} installer…")
+        self.update_btn.configure(state="disabled", text="Updating…")
+        self._append_log(f"Downloading {info.tag}…")
 
         def work() -> None:
             try:
@@ -555,20 +553,20 @@ class App(ctk.CTk):
         threading.Thread(target=work, daemon=True).start()
 
     def _apply_downloaded_update(self, setup_path: str) -> None:
-        self._append_log("Launching installer — close this app if it stays open.")
+        self._append_log("Installing update silently and relaunching…")
+        self.update_btn.configure(text="Installing…")
         try:
-            launch_installer(Path(setup_path))
+            launch_silent_update(Path(setup_path))
         except Exception as exc:  # noqa: BLE001
-            self._append_log(f"Could not launch installer: {exc}")
+            self._append_log(f"Could not start update: {exc}")
             if not self._monitoring:
-                messagebox.showerror("Update", f"Could not launch installer:\n{exc}")
+                messagebox.showerror("Update", f"Could not start update:\n{exc}")
             if self._pending_update is not None:
                 self.update_btn.configure(
                     state="normal",
                     text=f"Update to v{self._pending_update.version}",
                 )
             return
-        # Quit so Inno Setup can replace TwitchRecorder.exe
         try:
             self._persist()
         except Exception:  # noqa: BLE001
