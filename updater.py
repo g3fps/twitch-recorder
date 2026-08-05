@@ -45,7 +45,6 @@ def parse_version(text: str) -> tuple[int, ...]:
 def is_newer(candidate: str, current: str = APP_VERSION) -> bool:
     a = parse_version(candidate)
     b = parse_version(current)
-    # Pad so (1,2) < (1,2,3)
     n = max(len(a), len(b))
     a = a + (0,) * (n - len(a))
     b = b + (0,) * (n - len(b))
@@ -140,35 +139,57 @@ def launch_silent_update(setup_path: Path, app_exe: Path | None = None) -> None:
     """
     Run Inno Setup silently, then relaunch the *installed* app.
 
-    Always relaunches %LOCALAPPDATA%\\TwitchRecorder\\TwitchRecorder.exe so a
-    portable/repo shortcut cannot keep you stuck on an old build.
+    Uses a detached .cmd helper (survives this process exiting). Relies on
+    ``start ""`` for relaunch — PowerShell Start-Process under DETACHED_PROCESS
+    does not reliably open a GUI on Windows.
     """
     setup = str(setup_path.resolve())
     if not os.path.isfile(setup):
         raise FileNotFoundError(setup)
     target = str((app_exe or installed_app_exe()).resolve())
-    log_path = str(Path(tempfile.gettempdir()) / "TwitchRecorder-update.log")
-    install = str(install_dir())
+    install = str(install_dir().resolve())
+    temp = Path(tempfile.gettempdir())
+    helper_log = temp / "TwitchRecorder-update-helper.log"
+    inno_log = temp / "TwitchRecorder-update-inno.log"
+    cmd_path = temp / "TwitchRecorder-apply-update.cmd"
 
-    # Brief delay so the current process can exit and unlock files.
-    # /DIR forces the real install location even if this process was a portable copy.
-    script = (
-        f'ping -n 3 127.0.0.1 >nul & '
-        f'"{setup}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
-        f'/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS '
-        f'/DIR="{install}" /LOG="{log_path}" & '
-        f'if exist "{target}" (start "" "{target}")'
+    # cmd.exe batch — keep quoting simple; paths rarely need escaping beyond quotes.
+    batch = "\r\n".join(
+        [
+            "@echo off",
+            f'echo helper started> "{helper_log}"',
+            "ping -n 4 127.0.0.1 >nul",
+            f'echo running setup>> "{helper_log}"',
+            (
+                f'"{setup}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
+                f"/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS "
+                f'/DIR="{install}" /LOG="{inno_log}"'
+            ),
+            f'echo setup exit %ERRORLEVEL%>> "{helper_log}"',
+            "ping -n 3 127.0.0.1 >nul",
+            f'if exist "{target}" (',
+            f'  echo relaunching>> "{helper_log}"',
+            f'  start "" /D "{install}" "{target}"',
+            f'  echo relaunch issued>> "{helper_log}"',
+            ") else (",
+            f'  echo ERROR missing exe>> "{helper_log}"',
+            ")",
+            "",
+        ]
     )
+    cmd_path.write_text(batch, encoding="utf-8")
+
     creationflags = 0
     if sys.platform.startswith("win"):
+        # NOTE: DETACHED_PROCESS hangs Inno/call and breaks GUI relaunch.
+        # CREATE_NEW_PROCESS_GROUP is enough for the helper to outlive this app.
         creationflags = (
-            getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
-            | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+            getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
             | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
         )
     subprocess.Popen(
-        ["cmd.exe", "/c", script],
-        cwd=install if os.path.isdir(install) else None,
+        ["cmd.exe", "/c", str(cmd_path)],
+        cwd=str(temp),
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -177,6 +198,5 @@ def launch_silent_update(setup_path: Path, app_exe: Path | None = None) -> None:
     )
 
 
-# Back-compat name used by older call sites
 def launch_installer(setup_path: Path) -> None:
     launch_silent_update(setup_path)
