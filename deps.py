@@ -334,7 +334,12 @@ def ffmpeg_cmd() -> list[str]:
 
 
 def target_exe_path() -> Path:
-    """Path to the app executable (frozen) or python running gui.py."""
+    """Prefer the installed app under LocalAppData; fall back to this process."""
+    from updater import installed_app_exe
+
+    installed = installed_app_exe()
+    if installed.is_file():
+        return installed
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve()
     return app_dir() / "TwitchRecorder.exe"
@@ -350,7 +355,7 @@ def start_menu_shortcut_exists() -> bool:
 
 
 def create_start_menu_shortcut(target: Path | None = None) -> Path:
-    """Create/update a Start Menu shortcut. Returns the .lnk path."""
+    """Create/update a Start Menu shortcut pointing at the installed app."""
     if not sys.platform.startswith("win"):
         raise OSError("Start Menu shortcuts are only supported on Windows")
 
@@ -397,6 +402,59 @@ def create_start_menu_shortcut(target: Path | None = None) -> Path:
         err = (result.stderr or result.stdout or "unknown error").strip()
         raise RuntimeError(f"Failed to create Start Menu shortcut: {err}")
     return shortcut
+
+
+def repair_start_menu_shortcut_if_stale() -> Path | None:
+    """
+    If the flat Start Menu .lnk points at a non-install path (e.g. the git repo),
+    rewrite it to %LOCALAPPDATA%\\TwitchRecorder\\TwitchRecorder.exe.
+    """
+    if not sys.platform.startswith("win"):
+        return None
+    from updater import installed_app_exe
+
+    installed = installed_app_exe()
+    if not installed.is_file():
+        return None
+    shortcut = start_menu_shortcut_path()
+    if not shortcut.is_file():
+        return None
+    try:
+        script = (
+            f"$w = New-Object -ComObject WScript.Shell; "
+            f"$s = $w.CreateShortcut('{str(shortcut).replace(chr(39), chr(39)+chr(39))}'); "
+            f"Write-Output $s.TargetPath"
+        )
+        result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-WindowStyle",
+                "Hidden",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=30,
+            check=False,
+            **subprocess_hidden_kwargs(),
+        )
+        current = (result.stdout or "").strip()
+        if not current:
+            return None
+        install_root = str(installed.parent.resolve()).lower()
+        if Path(current).resolve().as_posix().lower().startswith(
+            Path(install_root).as_posix().lower()
+        ):
+            return None
+        return create_start_menu_shortcut(installed)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def prompt_marker_path() -> Path:

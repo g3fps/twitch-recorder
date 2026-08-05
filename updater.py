@@ -126,34 +126,37 @@ def download_installer(
     return dest
 
 
-def installed_app_exe() -> Path:
-    """Path the installer writes to (and what we relaunch after a silent update)."""
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).resolve()
+def install_dir() -> Path:
     local = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
-    return Path(local) / "TwitchRecorder" / "TwitchRecorder.exe"
+    return Path(local) / "TwitchRecorder"
+
+
+def installed_app_exe() -> Path:
+    """Canonical installed exe — always LocalAppData, never a portable/repo copy."""
+    return install_dir() / "TwitchRecorder.exe"
 
 
 def launch_silent_update(setup_path: Path, app_exe: Path | None = None) -> None:
     """
-    Run Inno Setup silently, then relaunch the app.
+    Run Inno Setup silently, then relaunch the *installed* app.
 
-    Starts a detached cmd so it continues after this process exits and can
-    replace locked files under %LOCALAPPDATA%\\TwitchRecorder.
+    Always relaunches %LOCALAPPDATA%\\TwitchRecorder\\TwitchRecorder.exe so a
+    portable/repo shortcut cannot keep you stuck on an old build.
     """
     setup = str(setup_path.resolve())
     if not os.path.isfile(setup):
         raise FileNotFoundError(setup)
     target = str((app_exe or installed_app_exe()).resolve())
     log_path = str(Path(tempfile.gettempdir()) / "TwitchRecorder-update.log")
+    install = str(install_dir())
 
     # Brief delay so the current process can exit and unlock files.
-    # /VERYSILENT = no wizard; /FORCECLOSEAPPLICATIONS = replace locked app files.
-    # Relaunch ourselves after setup (Inno [Run] uses skipifsilent).
+    # /DIR forces the real install location even if this process was a portable copy.
     script = (
         f'ping -n 3 127.0.0.1 >nul & '
         f'"{setup}" /VERYSILENT /NORESTART /SUPPRESSMSGBOXES '
-        f'/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /LOG="{log_path}" & '
+        f'/CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS '
+        f'/DIR="{install}" /LOG="{log_path}" & '
         f'if exist "{target}" (start "" "{target}")'
     )
     creationflags = 0
@@ -165,7 +168,7 @@ def launch_silent_update(setup_path: Path, app_exe: Path | None = None) -> None:
         )
     subprocess.Popen(
         ["cmd.exe", "/c", script],
-        cwd=str(Path(target).parent) if os.path.isdir(str(Path(target).parent)) else None,
+        cwd=install if os.path.isdir(install) else None,
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,

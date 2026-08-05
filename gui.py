@@ -19,6 +19,7 @@ from deps import (
     create_start_menu_shortcut,
     ensure_dependencies,
     mark_start_menu_prompted,
+    repair_start_menu_shortcut_if_stale,
     should_ask_start_menu,
     start_menu_shortcut_exists,
     status_summary,
@@ -27,6 +28,8 @@ from recorder_core import RecorderConfig, RecorderManager, load_history
 from updater import (
     download_installer,
     fetch_latest_release,
+    install_dir,
+    installed_app_exe,
     is_newer,
     launch_silent_update,
 )
@@ -168,11 +171,40 @@ class App(ctk.CTk):
         self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._append_log(f"Ready (v{APP_VERSION}). Add a Twitch channel, then Start monitoring.")
+        self.after(200, self._warn_if_not_installed_copy)
         self.after(300, self._check_deps_on_startup)
         self.after(600, self._maybe_ask_start_menu)
+        self.after(700, self._repair_shortcuts)
         self.after(2500, self._quiet_update_check)
         if "--start" in sys.argv and self.channels:
             self.after(800, self._start)
+
+    def _warn_if_not_installed_copy(self) -> None:
+        """Detect launching a portable/repo exe while a real install exists."""
+        if not getattr(sys, "frozen", False):
+            return
+        try:
+            running = Path(sys.executable).resolve()
+            installed = installed_app_exe().resolve()
+            if not installed.is_file():
+                return
+            if running == installed:
+                return
+            self._append_log(
+                f"Note: running {running} (v{APP_VERSION}), but the installed app is "
+                f"{installed}. Use the Start Menu “Twitch Auto Recorder” entry under "
+                f"{install_dir()} so updates stick."
+            )
+        except Exception:  # noqa: BLE001
+            pass
+
+    def _repair_shortcuts(self) -> None:
+        try:
+            fixed = repair_start_menu_shortcut_if_stale()
+            if fixed:
+                self._append_log(f"Fixed Start Menu shortcut → {installed_app_exe()}")
+        except Exception as exc:  # noqa: BLE001
+            self._append_log(f"Could not repair Start Menu shortcut: {exc}")
 
     def _build_ui(self) -> None:
         self.grid_columnconfigure(0, weight=1)
